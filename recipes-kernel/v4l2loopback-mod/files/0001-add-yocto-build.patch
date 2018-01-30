@@ -1,0 +1,33 @@
+From 4cba9f4efc35cc49b84162cd5e0b83d355530d94 Mon Sep 17 00:00:00 2001
+From: yoonki <yoonki@mdstec.com>
+Date: Fri, 4 Mar 2016 17:23:34 +0900
+Subject: [PATCH] add yocto build
+
+---
+ Makefile | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 22bef42..f05fccd 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,5 +1,4 @@
+-KERNELRELEASE	?= `uname -r`
+-KERNEL_DIR	?= /lib/modules/$(KERNELRELEASE)/build
++KERNEL_DIR	?= $(KERNEL_SRC)
+ PWD		:= $(shell pwd)
+ obj-m		:= v4l2loopback.o
+ 
+@@ -42,6 +41,9 @@ v4l2loopback.ko:
+ 	@echo "Building v4l2-loopback driver..."
+ 	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) modules
+ 
++modules_install:
++	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) modules_install
++
+ install-all: install install-utils install-man
+ install:
+ 	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) modules_install
+-- 
+1.9.1
+

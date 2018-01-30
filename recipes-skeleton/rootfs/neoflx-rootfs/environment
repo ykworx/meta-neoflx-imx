@@ -1,0 +1,3 @@
+QT_QPA_EGLFS_FB=/dev/fb1
+QT_EGLFS_IMX6_NO_FB_MULTI_BUFFER=1
+DBUS_SESSION_BUS_ADDRESS=unix:abstract=/tmp/dbus-neoflx

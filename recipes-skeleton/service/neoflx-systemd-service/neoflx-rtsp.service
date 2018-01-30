@@ -1,0 +1,10 @@
+[Unit]
+Description=NeoFLX RTSP Streamer Server
+
+[Service]
+EnvironmentFile=/NeoFLX/system/environment
+ExecStart=/NeoFLX/usr/bin/frtsp
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=NeoFLX Base Service (D-Bus)
+Before=dbus.service
+
+[Service]
+ExecStartPre=/NeoFLX/system/init.sh
+ExecStart=/usr/bin/dbus-daemon --session --address=unix:abstract=/tmp/dbus-neoflx --nofork --systemd-activation
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+

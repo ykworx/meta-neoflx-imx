@@ -1,0 +1,11 @@
+[Unit]
+Description=NeoFLX MODBUS TCP Server
+After=neoflx-base.service
+
+[Service]
+EnvironmentFile=/NeoFLX/system/environment
+ExecStart=/NeoFLX/usr/bin/fmbs
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

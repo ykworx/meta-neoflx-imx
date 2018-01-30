@@ -1,0 +1,12 @@
+/*
+ * Copyright (C) 2017 Yoonki Kim
+ */
+/dts-v1/;
+
+#include "imx6q.dtsi"
+#include "imx6qdl-neoflx-som-v15.dtsi"
+
+/ {
+	model = "MDS Technology neoflx Dual/Quad";
+	compatible = "mdstec,neoflx/q", "fsl,imx6q";
+};

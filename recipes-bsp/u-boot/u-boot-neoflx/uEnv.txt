@@ -1,0 +1,1 @@
+mmcargs=setenv bootargs console=${console},${baudrate} root=${mmcroot} video=mxcfb0:dev=hdmi,640x480M@60,if=RGB24,bpp=32 consoleblank=0

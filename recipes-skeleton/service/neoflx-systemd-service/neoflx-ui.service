@@ -1,0 +1,11 @@
+[Unit]
+Description=NeoFLX OSD Application
+After=neoflx-base.service
+
+[Service]
+EnvironmentFile=/NeoFLX/system/environment
+ExecStart=/NeoFLX/usr/bin/fui --platform eglfs
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

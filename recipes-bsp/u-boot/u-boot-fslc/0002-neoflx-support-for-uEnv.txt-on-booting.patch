@@ -1,0 +1,45 @@
+From be7b9a0adc5e820b73af040ddb1bc7381a32ac9d Mon Sep 17 00:00:00 2001
+From: yoonki <yoonki@mdstec.com>
+Date: Fri, 24 Mar 2017 13:35:41 +0900
+Subject: [PATCH] support for uEnv.txt on booting
+
+---
+ include/configs/mx6neoflx.h | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/include/configs/mx6neoflx.h b/include/configs/mx6neoflx.h
+index d335041..a87eefb 100644
+--- a/include/configs/mx6neoflx.h
++++ b/include/configs/mx6neoflx.h
+@@ -84,6 +84,7 @@
+ #define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+ #define CONFIG_EXTRA_ENV_SETTINGS \
+ 	"script=boot.scr\0" \
++	"bootenv=uEnv.txt\0" \
+ 	"image=zImage\0" \
+ 	"fdtfile=undefined\0" \
+ 	"fdt_addr_r=0x18000000\0" \
+@@ -113,6 +114,10 @@
+ 		"fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${script};\0" \
+ 	"bootscript=echo Running bootscript from mmc ...; " \
+ 		"source\0" \
++	"loadbootenv=" \
++		"fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${bootenv};\0" \
++	"importbootenv=echo Importing environment from mmc ...; " \
++		"env import -t ${loadaddr} ${filesize};\0" \
+ 	"loadimage=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}\0" \
+ 	"loadfdt=fatload mmc ${mmcdev}:${mmcpart} ${fdt_addr_r} ${fdtfile}\0" \
+ 	"mmcboot=echo Booting from mmc ...; " \
+@@ -167,6 +172,9 @@
+ 		"if run loadbootscript; then " \
+ 		"run bootscript; " \
+ 		"else " \
++			"if run loadbootenv; then " \
++				"run importbootenv; " \
++			"fi; " \
+ 			"if run loadimage; then " \
+ 				"run mmcboot; " \
+ 			"else run netboot; " \
+-- 
+2.7.4
+

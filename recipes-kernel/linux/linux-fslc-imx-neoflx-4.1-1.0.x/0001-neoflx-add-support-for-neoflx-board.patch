@@ -1,0 +1,40 @@
+From a3f88873f8f3722597ddbd2ac61d93839b77d5ea Mon Sep 17 00:00:00 2001
+From: yoonki <yoonki@mdstec.com>
+Date: Fri, 7 Jul 2017 13:31:02 +0900
+Subject: [PATCH] neoflx: add support for neoflx board
+
+---
+ arch/arm/boot/dts/Makefile    | 2 ++
+ arch/arm/mach-imx/clk-imx6q.c | 2 ++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
+index 8c18e59..39e9cbb 100644
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -290,6 +290,8 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
+ 	imx6q-pop-arm2.dtb \
+ 	imx6q-cm-fx6.dtb \
+ 	imx6q-cubox-i.dtb \
++	imx6q-neoflx10.dtb \
++	imx6q-neoflx10-som-v15.dtb \
+ 	imx6q-dfi-fs700-m60.dtb \
+ 	imx6q-dmo-edmqmx6.dtb \
+ 	imx6q-gk802.dtb \
+diff --git a/arch/arm/mach-imx/clk-imx6q.c b/arch/arm/mach-imx/clk-imx6q.c
+index f45de65..d7dc003 100644
+--- a/arch/arm/mach-imx/clk-imx6q.c
++++ b/arch/arm/mach-imx/clk-imx6q.c
+@@ -880,7 +880,9 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
+ 	}
+ 
+ 	/*Set enet_ref clock to 125M to supply for RGMII tx_clk */
++#ifndef CONFIG_AT803X_PHY	
+ 	clk_set_rate(clk[IMX6QDL_CLK_ENET_REF], 125000000);
++#endif
+ 
+ #ifdef CONFIG_MX6_VPU_352M
+ 	/*
+-- 
+2.7.4
+

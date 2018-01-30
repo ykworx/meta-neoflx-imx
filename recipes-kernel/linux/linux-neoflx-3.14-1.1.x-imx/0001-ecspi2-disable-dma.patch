@@ -1,0 +1,31 @@
+From 7d09b669e5a47efab47b946600c0cc097acf912d Mon Sep 17 00:00:00 2001
+From: yoonki <yoonki@mdstec.com>
+Date: Wed, 12 Jul 2017 23:35:20 +0900
+Subject: [PATCH] ecspi2-disable-dma
+
+---
+ arch/arm/boot/dts/imx6q.dtsi | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/boot/dts/imx6q.dtsi b/arch/arm/boot/dts/imx6q.dtsi
+index 0298709..d233879 100644
+--- a/arch/arm/boot/dts/imx6q.dtsi
++++ b/arch/arm/boot/dts/imx6q.dtsi
+@@ -233,12 +233,12 @@
+ 	dmas = <&sdma 3 7 1>, <&sdma 4 7 2>;
+ 	dma-names = "rx", "tx";
+ };
+-
++/*
+ &ecspi2 {
+ 	dmas = <&sdma 5 7 1>, <&sdma 6 7 2>;
+ 	dma-names = "rx", "tx";
+ };
+-
++*/
+ &ecspi3 {
+ 	dmas = <&sdma 7 7 1>, <&sdma 8 7 2>;
+ 	dma-names = "rx", "tx";
+-- 
+2.7.4
+

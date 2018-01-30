@@ -1,0 +1,553 @@
+From a271e097f920db7bcdc979a4038db2d87c4ed9aa Mon Sep 17 00:00:00 2001
+From: yoonki <yoonki@mdstec.com>
+Date: Fri, 30 Jun 2017 17:06:04 +0900
+Subject: [PATCH] add dconf extra(neoflx) api
+
+---
+ Makefile.am                  |   2 +-
+ client/dconf-client.c        |  50 +++++++++++++
+ client/dconf-client.h        |  18 +++++
+ client/dconf.vapi            |   5 ++
+ engine/dconf-engine-source.h |  11 +++
+ engine/dconf-engine.c        | 165 ++++++++++++++++++++++++++++++++++++++++++-
+ engine/dconf-engine.h        |  15 ++++
+ gdbus/dconf-gdbus-thread.c   |  46 ++++++++++++
+ 8 files changed, 310 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile.am b/Makefile.am
+index dd3571a..6950374 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -2,7 +2,7 @@ include Makefile.gtester
+ 
+ ACLOCAL_AMFLAGS = -I m4
+ 
+-SUBDIRS = shm gvdb common engine service gdbus gsettings client bin docs tests
++SUBDIRS = shm gvdb common engine service gdbus gsettings client bin docs #tests
+ 
+ DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc
+ EXTRA_DIST = trim-lcov.py m4
+diff --git a/client/dconf-client.c b/client/dconf-client.c
+index 36b56aa..605562b 100644
+--- a/client/dconf-client.c
++++ b/client/dconf-client.c
+@@ -249,6 +249,18 @@ dconf_client_new (void)
+   return client;
+ }
+ 
++void
++dconf_client_create_extra_source (DConfClient *client, const gchar *object_path)
++{
++    dconf_engine_create_extra_source (client->engine, object_path);
++}
++
++void 
++dconf_client_remove_extra_source (DConfClient *client)
++{
++    dconf_engine_remove_extra_source (client->engine);
++}
++
+ /**
+  * dconf_client_read:
+  * @client: a #DConfClient
+@@ -272,6 +284,15 @@ dconf_client_read (DConfClient *client,
+   return dconf_engine_read (client->engine, DCONF_READ_FLAGS_NONE, NULL, key);
+ }
+ 
++GVariant *
++dconf_client_extra_read (DConfClient *client,
++                   		 const gchar *key)
++{
++  g_return_val_if_fail (DCONF_IS_CLIENT (client), NULL);
++
++  return dconf_extra_engine_read (client->engine, DCONF_READ_FLAGS_NONE, NULL, key);
++}
++
+ /**
+  * DConfReadFlags:
+  * @DCONF_READ_FLAGS_NONE: no flags
+@@ -336,6 +357,17 @@ dconf_client_read_full (DConfClient    *client,
+   return dconf_engine_read (client->engine, flags, read_through, key);
+ }
+ 
++GVariant *
++dconf_client_extra_read_full (DConfClient    *client,
++                        	  const gchar    *key,
++	                          DConfReadFlags  flags,
++      		                  const GQueue   *read_through)
++{
++  g_return_val_if_fail (DCONF_IS_CLIENT (client), NULL);
++  
++  return dconf_extra_engine_read (client->engine, flags, read_through, key);
++}
++
+ /**
+  * dconf_client_list:
+  * @client: a #DConfClient
+@@ -632,6 +664,15 @@ dconf_client_watch_sync (DConfClient *client,
+   dconf_engine_watch_sync (client->engine, path);
+ }
+ 
++void
++dconf_client_extra_watch_sync (DConfClient *client,
++                         	   const gchar *path)
++{
++  g_return_if_fail (DCONF_IS_CLIENT (client));
++
++  dconf_extra_engine_watch_sync (client->engine, path);
++}
++
+ /**
+  * dconf_client_unwatch_fast:
+  * @client: a #DConfClient
+@@ -676,6 +717,15 @@ dconf_client_unwatch_sync (DConfClient *client,
+   dconf_engine_unwatch_sync (client->engine, path);
+ }
+ 
++void
++dconf_client_extra_unwatch_sync (DConfClient *client,
++                           const gchar *path)
++{
++  g_return_if_fail (DCONF_IS_CLIENT (client));
++
++  dconf_extra_engine_unwatch_sync (client->engine, path);
++}
++
+ /**
+  * dconf_client_sync:
+  * @client: a #DConfClient
+diff --git a/client/dconf-client.h b/client/dconf-client.h
+index 94c304a..6b40b0d 100644
+--- a/client/dconf-client.h
++++ b/client/dconf-client.h
+@@ -31,14 +31,27 @@ G_DECLARE_FINAL_TYPE(DConfClient, dconf_client, DCONF, CLIENT, GObject)
+ 
+ DConfClient *           dconf_client_new                                (void);
+ 
++void	                dconf_client_create_extra_source                (DConfClient          *client,
++																		 const gchar          *object_path);
++
++void	                dconf_client_remove_extra_source                (DConfClient          *client);
++
+ GVariant *              dconf_client_read                               (DConfClient          *client,
+                                                                          const gchar          *key);
+ 
++GVariant *              dconf_client_extra_read                         (DConfClient          *client,
++                                                                         const gchar          *key);
++
+ GVariant *              dconf_client_read_full                          (DConfClient          *client,
+                                                                          const gchar          *key,
+                                                                          DConfReadFlags        flags,
+                                                                          const GQueue         *read_through);
+ 
++GVariant *              dconf_client_extra_read_full                    (DConfClient          *client,
++                                                                         const gchar          *key,
++                                                                         DConfReadFlags        flags,
++                                                                         const GQueue         *read_through);
++
+ gchar **                dconf_client_list                               (DConfClient          *client,
+                                                                          const gchar          *dir,
+                                                                          gint                 *length);
+@@ -74,12 +87,17 @@ void                    dconf_client_watch_fast                         (DConfCl
+                                                                          const gchar          *path);
+ void                    dconf_client_watch_sync                         (DConfClient          *client,
+                                                                          const gchar          *path);
++void                    dconf_client_extra_watch_sync                   (DConfClient          *client,
++                                                                         const gchar          *path);
+ 
+ void                    dconf_client_unwatch_fast                       (DConfClient          *client,
+                                                                          const gchar          *path);
+ void                    dconf_client_unwatch_sync                       (DConfClient          *client,
+                                                                          const gchar          *path);
+ 
++void                    dconf_client_extra_unwatch_sync                 (DConfClient          *client,
++                                                                         const gchar          *path);
++
+ void                    dconf_client_sync                               (DConfClient          *client);
+ 
+ 
+diff --git a/client/dconf.vapi b/client/dconf.vapi
+index 62c2e65..a8ffe76 100644
+--- a/client/dconf.vapi
++++ b/client/dconf.vapi
+@@ -14,8 +14,12 @@ namespace DConf {
+ 		public signal void changed (string prefix, [CCode (array_length = false, array_null_terminated = true)] string[] changes, string? tag);
+ 
+ 		public Client ();
++		public void create_extra_source (string object_path);
++		public void remove_extra_source ();
+ 		public GLib.Variant? read (string key);
++		public GLib.Variant? extra_read (string key);
+ 		public GLib.Variant? read_full (string key, ReadFlags flags, GLib.Queue<Changeset>? read_through);
++		public GLib.Variant? extra_read_full (string key, ReadFlags flags, GLib.Queue<Changeset>? read_through);
+ 		public string[] list (string dir);
+ 		public string[] list_locks (string dir);
+ 		public bool is_writable (string key);
+@@ -26,6 +30,7 @@ namespace DConf {
+ 		public void watch_fast (string path);
+ 		public void unwatch_fast (string path);
+ 		public void watch_sync (string path);
++		public void extra_watch_sync (string path);
+ 		public void unwatch_sync (string path);
+ 	}
+ 
+diff --git a/engine/dconf-engine-source.h b/engine/dconf-engine-source.h
+index 802f09d..935fdbe 100644
+--- a/engine/dconf-engine-source.h
++++ b/engine/dconf-engine-source.h
+@@ -22,10 +22,12 @@
+ #define __dconf_engine_source_h__
+ 
+ #include "../gvdb/gvdb-reader.h"
++#include "../common/dconf-changeset.h"
+ #include <gio/gio.h>
+ 
+ typedef struct _DConfEngineSourceVTable DConfEngineSourceVTable;
+ typedef struct _DConfEngineSource DConfEngineSource;
++typedef struct _DConfEngineExtraSource DConfEngineExtraSource;
+ 
+ struct _DConfEngineSourceVTable
+ {
+@@ -51,6 +53,15 @@ struct _DConfEngineSource
+   gchar     *name;
+ };
+ 
++/* This is Memory Source : mds.yoonki */
++struct _DConfEngineExtraSource
++{
++	DConfChangeset *changeset;
++	gchar		   *bus_name;
++	gchar		   *object_path;
++	gchar		   *name;
++};
++
+ G_GNUC_INTERNAL
+ void                    dconf_engine_source_free                        (DConfEngineSource  *source);
+ 
+diff --git a/engine/dconf-engine.c b/engine/dconf-engine.c
+index bc36e52..041545f 100644
+--- a/engine/dconf-engine.c
++++ b/engine/dconf-engine.c
+@@ -159,9 +159,11 @@ struct _DConfEngine
+   gint                ref_count;
+ 
+   GMutex              sources_lock; /* This lock is for the sources (ie: refreshing) and state. */
++  GMutex			  extra_source_lock; /* This lock is Memory Base source (DConfChangeset)*/
+   guint64             state;        /* Counter that changes every time a source is refreshed. */
+   DConfEngineSource **sources;      /* Array never changes, but each source changes internally. */
+   gint                n_sources;
++  DConfEngineExtraSource *extra_source;
+ 
+   GMutex              queue_lock;   /* This lock is for pending, in_flight, queue_cond */
+   GCond               queue_cond;   /* Signalled when the queues empty */
+@@ -248,6 +250,28 @@ dconf_engine_new (const gchar    *profile,
+ }
+ 
+ void
++dconf_engine_create_extra_source (DConfEngine *engine, const gchar *object_path)
++{
++	g_mutex_init (&engine->extra_source_lock);
++
++	engine->extra_source = g_new (DConfEngineExtraSource *, 1);
++	engine->extra_source->changeset = dconf_changeset_new();
++	engine->extra_source->object_path = object_path;
++}
++
++void
++dconf_engine_remove_extra_source (DConfEngine *engine)
++{
++	g_mutex_lock (&engine->extra_source_lock);
++	if (engine->extra_source)
++	{
++		dconf_changeset_unref(engine->extra_source);
++		g_free (engine->extra_source);
++	}
++	g_mutex_unlock (&engine->extra_source_lock);
++}
++
++void
+ dconf_engine_unref (DConfEngine *engine)
+ {
+   gint ref_count;
+@@ -637,7 +661,27 @@ dconf_engine_read (DConfEngine    *engine,
+ 
+   return value;
+ }
+-
++GVariant *
++dconf_extra_engine_read (DConfEngine    *engine,
++            	         DConfReadFlags  flags,
++                  		 const GQueue   *read_through,
++	                     const gchar    *key)
++{
++	gboolean status;
++	GVariant *value = NULL;
++
++	g_mutex_lock (&engine->extra_source_lock);
++	if (engine->extra_source->changeset)
++	{
++		status = dconf_changeset_get(engine->extra_source->changeset, key, &value);
++	}
++	g_mutex_unlock (&engine->extra_source_lock);
++
++	if (status) 
++		return value;
++	else
++		return dconf_engine_read (engine, flags, read_through, key);
++}
+ gchar **
+ dconf_engine_list (DConfEngine *engine,
+                    const gchar *dir,
+@@ -795,6 +839,26 @@ dconf_engine_make_match_rule (DConfEngineSource *source,
+   return params;
+ }
+ 
++static GVariant *
++dconf_extra_engine_make_match_rule (DConfEngineExtraSource *source, const gchar *path)
++{
++  GVariant *params;
++  gchar *rule;
++
++  rule = g_strdup_printf ("type='signal',"
++                          "interface='com.mdstec.NeoFLX.Camera',"
++                          "path='%s',"
++                          "arg0path='%s'",
++                          source->object_path,
++                          path);
++
++  params = g_variant_new ("(s)", rule);
++
++  g_free (rule);
++
++  return params;
++}
++
+ typedef struct
+ {
+   DConfEngineCallHandle handle;
+@@ -915,6 +979,24 @@ dconf_engine_handle_match_rule_sync (DConfEngine *engine,
+     }
+ }
+ 
++static void
++dconf_extra_engine_handle_match_rule_sync (DConfEngine *engine,
++										   const gchar *method_name,
++                                     	   const gchar *path)
++{
++  gint i;
++
++  GVariant *result;
++
++  result = dconf_extra_engine_dbus_call_sync_func (G_BUS_TYPE_SESSION, "org.freedesktop.DBus",
++		  										   "/org/freedesktop/DBus", "org.freedesktop.DBus", method_name,
++										   		   dconf_extra_engine_make_match_rule (engine->extra_source, path),
++										  		   G_VARIANT_TYPE_UNIT, NULL);
++
++  if (result)
++	  g_variant_unref (result);
++}
++
+ void
+ dconf_engine_watch_sync (DConfEngine *engine,
+                          const gchar *path)
+@@ -923,12 +1005,28 @@ dconf_engine_watch_sync (DConfEngine *engine,
+ }
+ 
+ void
++dconf_extra_engine_watch_sync (DConfEngine *engine,
++                               const gchar *path)
++{
++  dconf_engine_handle_match_rule_sync (engine, "AddMatch", path);
++  dconf_extra_engine_handle_match_rule_sync (engine, "AddMatch", path);
++}
++
++void
+ dconf_engine_unwatch_sync (DConfEngine *engine,
+                            const gchar *path)
+ {
+   dconf_engine_handle_match_rule_sync (engine, "RemoveMatch", path);
+ }
+ 
++void
++dconf_extra_engine_unwatch_sync (DConfEngine *engine,
++                                 const gchar *path)
++{
++  dconf_engine_handle_match_rule_sync (engine, "RemoveMatch", path);
++  dconf_extra_engine_handle_match_rule_sync (engine, "RemoveMatch", path);
++}
++
+ typedef struct
+ {
+   DConfEngineCallHandle handle;
+@@ -1361,6 +1459,71 @@ junk:
+     }
+ }
+ 
++void
++dconf_extra_engine_handle_dbus_signal (GBusType     type,
++            	                       const gchar *sender,
++                                       const gchar *object_path,
++                                       const gchar *member,
++                                       GVariant    *body)
++{
++  if (g_str_equal (member, "Notify"))
++    {
++      gchar *arg0;
++      GVariant *arg1;
++      gchar *tag;
++      const gchar *prefix;
++      const gchar **changes;
++	  GVariant * const *values;
++      GSList *engines;
++
++      if (!g_variant_is_of_type (body, G_VARIANT_TYPE ("(says)")))
++        return;
++
++	  g_variant_get (body, "(s@ays)", &arg0, &arg1, &tag);
++      GVariant *tmp =  g_variant_new_from_data(G_VARIANT_TYPE("a{smv}"),
++                                       g_variant_get_data(arg1),
++                                       g_variant_get_size(arg1),
++                                       FALSE,
++                                       (GDestroyNotify) g_variant_unref, arg1);
++	  g_variant_ref_sink (tmp);
++	  GVariant *args = g_variant_get_normal_form (tmp);
++	  g_variant_unref (tmp);
++
++      DConfChangeset *changeset = dconf_changeset_deserialise(args);
++      g_variant_unref(args);
++
++      dconf_changeset_describe (changeset, &prefix, &changes, &values);
++
++      engines = dconf_engine_global_list;
++
++      //while (engines) only first engine has extra source
++      if (engines)
++        {
++          DConfEngine *engine = engines->data;
++
++		  if (engine->extra_source->changeset) {
++			  g_mutex_lock(&engine->extra_source_lock);
++			  for (guint i = 0; changes[i]; i++) {
++				  gchar *key = g_strconcat(arg0, prefix, changes[i], NULL);
++				  //g_print("%s, %s, %s\n", arg0, prefix, changes[i]);
++				  dconf_changeset_set(engine->extra_source->changeset, key, values[i]);
++				  g_free(key);
++			  }
++			  g_mutex_unlock(&engine->extra_source_lock);
++		  }
++
++		  gchar *real_prefix = g_strconcat(arg0, prefix, NULL);
++          dconf_engine_change_notify (engine, real_prefix, changes, tag, FALSE, NULL, engine->user_data);
++		  g_free(real_prefix);
++        }
++
++	  dconf_changeset_unref(changeset);
++
++	  g_free(arg0);
++	  g_free(tag);
++    }
++}
++
+ gboolean
+ dconf_engine_has_outstanding (DConfEngine *engine)
+ {
+diff --git a/engine/dconf-engine.h b/engine/dconf-engine.h
+index 2485423..35e0d58 100644
+--- a/engine/dconf-engine.h
++++ b/engine/dconf-engine.h
+@@ -67,6 +67,15 @@ GVariant *              dconf_engine_dbus_call_sync_func                (GBusTyp
+                                                                          const GVariantType      *expected_type,
+                                                                          GError                 **error);
+ 
++G_GNUC_INTERNAL
++GVariant *              dconf_extra_engine_dbus_call_sync_func          (GBusType                 bus_type,
++                                                                         const gchar             *bus_name,
++                                                                         const gchar             *object_path,
++                                                                         const gchar             *interface_name,
++                                                                         const gchar             *method_name,
++                                                                         GVariant                *parameters,
++                                                                         const GVariantType      *expected_type,
++                                                                         GError                 **error);
+ /* Notifies that a change occured.
+  *
+  * The engine lock is never held when calling this function so it is
+@@ -97,6 +106,12 @@ void                    dconf_engine_handle_dbus_signal                 (GBusTyp
+                                                                          GVariant                *parameters);
+ 
+ G_GNUC_INTERNAL
++void                    extra_dconf_engine_handle_dbus_signal           (GBusType                 bus_type,
++                                                                         const gchar             *bus_name,
++                                                                         const gchar             *object_path,
++                                                                         const gchar             *signal_name,
++                                                                         GVariant                *parameters);
++G_GNUC_INTERNAL
+ DConfEngine *           dconf_engine_new                                (const gchar             *profile,
+                                                                          gpointer                 user_data,
+                                                                          GDestroyNotify           free_func);
+diff --git a/gdbus/dconf-gdbus-thread.c b/gdbus/dconf-gdbus-thread.c
+index e397e3a..e0ab147 100644
+--- a/gdbus/dconf-gdbus-thread.c
++++ b/gdbus/dconf-gdbus-thread.c
+@@ -116,6 +116,20 @@ dconf_gdbus_signal_handler (GDBusConnection *connection,
+   dconf_engine_handle_dbus_signal (bus_type, sender_name, object_path, signal_name, parameters);
+ }
+ 
++static void
++dconf_extra_gdbus_signal_handler (GDBusConnection *connection,
++             	                  const gchar     *sender_name,
++                   		          const gchar     *object_path,
++	                              const gchar     *interface_name,
++      		                      const gchar     *signal_name,
++            	                  GVariant        *parameters,
++                  		          gpointer         user_data)
++{
++  GBusType bus_type = GPOINTER_TO_INT (user_data);
++	
++  dconf_extra_engine_handle_dbus_signal (bus_type, sender_name, object_path, signal_name, parameters);
++}
++
+ /* The code to create and initialise the GDBusConnection for a
+  * particular bus type is more complicated than it should be.
+  *
+@@ -354,6 +368,38 @@ dconf_engine_dbus_call_sync_func (GBusType             bus_type,
+                                       parameters, reply_type, G_DBUS_CALL_FLAGS_NONE, -1, NULL, error);
+ }
+ 
++GVariant *
++dconf_extra_engine_dbus_call_sync_func (GBusType             bus_type,
++                                        const gchar         *bus_name,
++                                        const gchar         *object_path,
++                                        const gchar         *interface_name,
++                                        const gchar         *method_name,
++                                        GVariant            *parameters,
++                                        const GVariantType  *reply_type,
++                            	        GError             **error)
++{
++  const GError *inner_error = NULL;
++  GDBusConnection *connection;
++
++  connection = dconf_gdbus_get_bus_data[bus_type];
++  if (connection == NULL)
++    {
++      g_variant_unref (g_variant_ref_sink (parameters));
++
++      if (error)
++        *error = g_error_copy (inner_error);
++
++      return NULL;
++    }
++
++  g_dbus_connection_signal_subscribe (connection, NULL, "com.mdstec.NeoFLX.Camera",
++                                      NULL, NULL, NULL, G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE,
++                                      dconf_extra_gdbus_signal_handler, GINT_TO_POINTER (bus_type), NULL);
++
++  return g_dbus_connection_call_sync (connection, bus_name, object_path, interface_name, method_name,
++                                      parameters, reply_type, G_DBUS_CALL_FLAGS_NONE, -1, NULL, error);
++}
++
+ #ifndef PIC
+ void
+ dconf_engine_dbus_init_for_testing (void)
+-- 
+2.7.4
+
